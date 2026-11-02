@@ -1,0 +1,7 @@
+# Competition data (~20 GB) and local caches: never commit
+data/
+memecoins-pump-or-dump/
+*.parquet
+*.feather
+submission.csv
+.ipynb_checkpoints/
