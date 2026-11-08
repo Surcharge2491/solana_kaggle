@@ -53,18 +53,34 @@ def chain_rows(url, mint, pool, mt):
     return rows
 
 
+def audit_one(url, t):
+    live = t['rows']; chain = chain_rows(url, t['mint'], t['pool'], t['mt'])
+    fl, fc = amm_features(t['mint'], live), amm_features(t['mint'], chain)
+    diff = {k: (round(fl.get(k, np.nan), 4), round(fc.get(k, np.nan), 4)) for k in fc
+            if not np.isclose(fl.get(k, np.nan), fc[k], rtol=1e-3, equal_nan=True)}
+    print(f"{t['mint'][:10]}.. live trades={len(live)} chain trades={len(chain)} | features differing: {len(diff)}/{len(fc)}", flush=True)
+    for k, v in list(diff.items())[:8]:
+        print(f"     {k}: live={v[0]} chain={v[1]}", flush=True)
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(); ap.add_argument('run'); ap.add_argument('--n', type=int, default=3)
     ap.add_argument('--max-trades', type=int, default=400)
+    ap.add_argument('--follow', action='store_true', help='audit new tokens as they are decided (pool history is short then)')
     a = ap.parse_args()
     url = f"https://mainnet.helius-rpc.com/?api-key={os.environ['HELIUS_API_KEY']}"
-    toks = [json.loads(l) for l in open(os.path.join(a.run, 'rows60.jsonl'))]
-    toks = [t for t in toks if 0 < len(t['rows']) <= a.max_trades][:a.n]
-    for t in toks:
-        live = t['rows']; chain = chain_rows(url, t['mint'], t['pool'], t['mt'])
-        fl, fc = amm_features(t['mint'], live), amm_features(t['mint'], chain)
-        diff = {k: (round(fl.get(k, np.nan), 4), round(fc.get(k, np.nan), 4)) for k in fc
-                if not np.isclose(fl.get(k, np.nan), fc[k], rtol=1e-3, equal_nan=True)}
-        print(f"{t['mint'][:10]}.. live trades={len(live)} chain trades={len(chain)} | features differing: {len(diff)}/{len(fc)}")
-        for k, v in list(diff.items())[:8]:
-            print(f"     {k}: live={v[0]} chain={v[1]}")
+    path = os.path.join(a.run, 'rows60.jsonl')
+    if not a.follow:
+        toks = [json.loads(l) for l in open(path)]
+        for t in [t for t in toks if 0 < len(t['rows']) <= a.max_trades][:a.n]:
+            audit_one(url, t)
+        sys.exit()
+    seen, done = sum(1 for _ in open(path)) if os.path.exists(path) else 0, 0
+    while done < a.n:
+        lines = open(path).read().splitlines() if os.path.exists(path) else []
+        for l in lines[seen:]:
+            t = json.loads(l)
+            if 0 < len(t['rows']) <= a.max_trades and done < a.n:
+                audit_one(url, t); done += 1
+        seen = len(lines)
+        time.sleep(5)

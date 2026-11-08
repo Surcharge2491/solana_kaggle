@@ -58,10 +58,10 @@ HELIUS_API_KEY=your-key python live/paper_trader.py --out live/runs/today
   first price seen ≥ 2 s after the decision, a rough slippage check)
 - `migrations.csv`: migrations outside the universe; `features.csv`, `rows60.jsonl`: audit data; `status.json`
 
-Check stream completeness against chain history for a few tokens:
+Check stream completeness against chain history (run alongside the trader; audits the next N tokens right after their decision):
 
 ```bash
-HELIUS_API_KEY=your-key python live/audit.py live/runs/today --n 3
+HELIUS_API_KEY=your-key python live/audit.py live/runs/today --follow --n 3
 ```
 
 ## Helius usage
