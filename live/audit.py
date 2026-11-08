@@ -36,12 +36,14 @@ def chain_rows(url, mint, pool, mt):
         sigs += page; before = page[-1]['signature']
         if page[-1].get('blockTime') and page[-1]['blockTime'] < mt:
             break
-    sigs = [s for s in sigs if s.get('err') is None and s.get('blockTime') is not None and mt <= s['blockTime'] <= mt + 60]
+    sigs = [s for s in sigs if s.get('err') is None and s.get('blockTime') is not None and mt - 2 <= s['blockTime'] <= mt + 62]  # block time can differ from the event timestamp by ~1 s
     rows = []
     for s in reversed(sigs):
         tx = rpc(url, 'getTransaction', [s['signature'], {'encoding': 'json', 'maxSupportedTransactionVersion': 1}])
         for _, name, f in events_from_logs(tx['meta']['logMessages']):
             if name not in ('BuyEvent', 'SellEvent') or f['pool'] != pool:
+                continue
+            if not 0 <= f['timestamp'] - mt <= 60:
                 continue
             buy = name == 'BuyEvent'
             b = f['pool_base_token_reserves'] + (-f['base_amount_out'] if buy else f['base_amount_in'])
