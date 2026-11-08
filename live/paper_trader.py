@@ -89,6 +89,7 @@ class Trader:
         self.rpc = Rpc(f"https://mainnet.helius-rpc.com/?api-key={args.key}")
         self.started = time.time()
         self.seq = 0
+        self.seen = collections.deque(maxlen=200_000); self.seen_set = set()  # tx signatures (both subscriptions can deliver one tx)
         self.creations = {}                       # mint -> creation info (seen live)
         self.curve = {}                           # mint -> streamed bonding-curve aggregates
         self.pools = {}                           # pool -> mint for tracked migrations
@@ -118,6 +119,13 @@ class Trader:
     def on_logs(self, value, slot):
         if value.get('err') is not None:
             return
+        sig = value['signature']
+        if sig in self.seen_set:
+            self.stats['duplicate_tx'] += 1
+            return
+        if len(self.seen) == self.seen.maxlen:
+            self.seen_set.discard(self.seen[0])
+        self.seen.append(sig); self.seen_set.add(sig)
         self.seq += 1
         for prog, name, f in events_from_logs(value['logs']):
             if name == 'TradeEvent':
