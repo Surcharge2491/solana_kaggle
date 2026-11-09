@@ -15,3 +15,7 @@ v2 takes about 35 minutes (the walk-forward dominates; set `N_SEEDS = 3` to spee
 
 Locally: put the competition files in `data/` next to the notebook (flat layout, as downloaded), install
 `pandas pyarrow lightgbm scikit-learn matplotlib seaborn scipy`, and run it.
+
+## Live paper-trading results
+
+- [Nov 8–9, 2026: 8.5 hours on live Solana data](live/reports/live_nov8_9/README.md): charts and explanations

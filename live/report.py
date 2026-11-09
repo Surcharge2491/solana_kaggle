@@ -71,9 +71,9 @@ def main(run, out):
     S['base_rates_live'] = dict(zip([f'>={k}x' for k in LADDER], [round(v, 2) for v in live]))
 
     # 2. Calibration: predicted probability vs realised hit rate, by quintile of p_k
-    fig, axs = plt.subplots(1, 3, figsize=(12, 4), sharey=False)
+    fig, axs = plt.subplots(1, 2, figsize=(10, 4.2), sharey=False)
     S['calibration'] = {}
-    for ax, k in zip(axs, (3, 5, 10)):
+    for ax, k in zip(axs, (3, 5)):
         p, y = m[f'p_{k}'], (m.max_x >= k).astype(int)
         q = pd.qcut(p.rank(method='first'), 5, labels=False)
         g = pd.DataFrame({'p': p, 'y': y, 'q': q}).groupby('q').agg(pred=('p', 'mean'), real=('y', 'mean'), n=('y', 'size'))
@@ -125,13 +125,13 @@ def main(run, out):
               ('buy every token, model tp', m.pnl_model_tp.cumsum(), ORANGE),
               ('buy top 10% by EV, model tp', (m.pnl_model_tp * top).cumsum(), BLUE)]
     for lab, s, c in series:
-        ax.plot(m.t, s, color=c, lw=2, label=lab)
-        ax.annotate(f'{s.iloc[-1]:+.1f}', (m.t.iloc[-1], s.iloc[-1]), xytext=(4, 0), textcoords='offset points',
+        ax.plot(np.arange(1, len(s) + 1), s.values, color=c, lw=2, label=lab)
+        ax.annotate(f'{s.iloc[-1]:+.1f}', (len(s), s.iloc[-1]), xytext=(4, 0), textcoords='offset points',
                     va='center', color=INK2, fontsize=9)
     ax.axhline(0, color=INK2, lw=0.8)
-    ax.set_ylabel('cumulative PnL (SOL, 1 SOL per trade)'); ax.set_xlabel('migration time (UTC)')
+    ax.set_ylabel('cumulative PnL (SOL, 1 SOL per trade)'); ax.set_xlabel('scored tokens, in time order')
     ax.set_title('What different policies would have made'); ax.legend(loc='lower left', fontsize=9)
-    fig.autofmt_xdate(); fig.savefig(os.path.join(out, '5_cumulative_pnl.png')); plt.close(fig)
+    fig.savefig(os.path.join(out, '5_cumulative_pnl.png')); plt.close(fig)
     S['pnl'] = {'actual': round(float(m.pnl.sum()), 2), 'all_tp3': round(float(m.pnl_tp3.sum()), 2),
                 'all_model_tp': round(float(m.pnl_model_tp.sum()), 2),
                 'top10_model_tp': round(float((m.pnl_model_tp * top).sum()), 2), 'top10_n': int(top.sum()),
