@@ -114,6 +114,13 @@ trades *at* our price (assumes we're first in the queue, so it's optimistic).
 The report gives PnL, drawdown, fills, time quoting, and fill markouts at
 +1 s / +10 s. Negative markouts mean we're being picked off.
 
+Where to record: Binance answers 403 to some regions and cloud IP ranges
+(US ones among them), so run `record` where the live bot would run (the Tokyo
+box from Part 4), not in a US cloud sandbox. Bullet's API has no market
+history at all: `/fapi/v1/trades` holds only the last 1000 trades (about
+1.5 h of SOL-USD), and the Celestia data-availability route is still "in
+development" in Bullet's docs. Recording is the only source for now.
+
 Binance's archive has no receive times, and `bookTicker` stops after
 2024-03-30. Recordings from `record` carry real receive times. Bullet history
 only exists from when you start recording.
