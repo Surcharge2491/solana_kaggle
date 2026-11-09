@@ -8,3 +8,4 @@ submission.csv
 live/*.pkl
 live/runs/
 *.log
+__pycache__/
