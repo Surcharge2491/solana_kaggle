@@ -88,6 +88,7 @@ class Trader:
         self.wallets = {w: [a, h] for w, a, h in zip(ws['wallet'], ws['appear'], ws['hit'])}
         self.rpc = Rpc(f"https://mainnet.helius-rpc.com/?api-key={args.key}")
         self.started = time.time()
+        self.accepting = True   # False after --hours: no new tokens, open ones still resolve
         self.seq = 0
         self.seen = collections.deque(maxlen=200_000); self.seen_set = set()  # tx signatures (both subscriptions can deliver one tx)
         self.creations = {}                       # mint -> creation info (seen live)
@@ -152,7 +153,7 @@ class Trader:
 
     def on_migration(self, f, sig):
         mint, pool = f['base_mint'], f['pool']
-        if f['quote_mint'] != WSOL or mint in self.tokens:
+        if f['quote_mint'] != WSOL or mint in self.tokens or not self.accepting:
             return
         self.stats['migrations'] += 1
         t = {'mint': mint, 'pool': pool, 'mt': f['timestamp'], 'pool_sol': f['quote_amount_in'] / 1e9,
@@ -322,7 +323,14 @@ class Trader:
         tasks = [asyncio.create_task(self.stream()), asyncio.create_task(self.janitor())]
         if self.args.hours:
             await asyncio.sleep(self.args.hours * 3600)
-            log('time limit reached; waiting for open positions to resolve is skipped')
+            self.accepting = False
+            if self.args.drain:
+                log(f'time limit reached; draining {len(self.tokens)} open tokens (up to ~1 h)')
+                while self.tokens:
+                    await asyncio.sleep(30)
+                log('all open tokens resolved')
+            else:
+                log('time limit reached; open tokens are not resolved')
             for t in tasks:
                 t.cancel()
         else:
@@ -333,6 +341,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default=os.path.join(HERE, 'runs', time.strftime('%Y%m%d_%H%M%S')))
     ap.add_argument('--hours', type=float, default=0, help='stop after this many hours (0 = run forever)')
+    ap.add_argument('--drain', action='store_true', help='after --hours, keep streaming until open tokens resolve')
     ap.add_argument('--key', default=os.environ.get('HELIUS_API_KEY'))
     ap.add_argument('--model', default=None, help='path to model bundle (default: model_bundle.pkl)')
     args = ap.parse_args()
